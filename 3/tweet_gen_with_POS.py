@@ -100,6 +100,22 @@ def print_filtered_sent(filt_sent):
     for sent in filt_sent:
         print(sent)
 
+def sent_prob(sent_list, cpd_1gram, cpd_2gram):
+    sent_prob_dict = {}
+    for sent in sent_list:
+        total_prob = 1.0
+        words = nltk.word_tokenize(sent)
+        total_prob = cpd_1gram.prob(words[0])
+        for w1, w2 in nltk.ngrams(words, 2):
+            total_prob *= cpd_2gram[w1].prob(w2)
+        sent_prob_dict[sent] = total_prob
+    return sent_prob_dict
+
+def get_top_five(dict_of_probs):
+    sorted_dict = sorted(dict_of_probs.items(), key=lambda x: -x[1])
+    top_five_sent = [sent for sent, prob in sorted_dict[:5]]
+    return top_five_sent
+
 def main():
     with open(FILE_PATH, 'r') as f:
         data = f.read().lower().replace('\n',' ')
@@ -115,13 +131,16 @@ def main():
     cpd_2gram = nltk.ConditionalProbDist(cfd_2gram, nltk.MLEProbDist)
     cpd_2gram_rev = nltk.ConditionalProbDist(cfd_2gram_rev, nltk.MLEProbDist)
 
+    cfd_1gram = ngram_freq_dist(train_corpus)
+    cpd_1gram = nltk.MLEProbDist(cfd_1gram)
+
     random_sentences = []
     random_pos_tags = []
     random_word_pos_tags = []
 
     # Generate 200 sentences randomly 
     for _ in range(5000):
-        sent = generate_txt_bigram_model_random(cpd_2gram, cpd_2gram_rev, 'election', 9)
+        sent = generate_txt_bigram_model_random(cpd_2gram, cpd_2gram_rev, 'education', 9)
         word_pos_tags = nltk.pos_tag(sent.split())
         pos_tags = [x[1] for x in word_pos_tags]
     
@@ -160,7 +179,32 @@ def main():
         'TO': ['VB'],
     }
 
-    print_filtered_sent(filter_sentences(random_pos_tags, random_sentences, pos_template_dict))
+    filtered_sent = filter_sentences(random_pos_tags, random_sentences, pos_template_dict)
+    #print_filtered_sent(filtered_sent)
+    #print('------------------------------------------------------------------------------')
+
+    dict_of_probs = sent_prob(filtered_sent, cpd_1gram, cpd_2gram)
+    top_five = get_top_five(dict_of_probs)
+
+    print('Top five tweets:\n')
+    for tweet in top_five:
+        print(tweet)
+        print('=============')
+
+    '''
+    Top 5 tweets:
+
+    1. mike pence slashed education must change i 'll be president
+
+    2. us must ensure world-class education than this morning at the
+
+    3. end childhood education should be a household items are often
+
+    4. we must provide education solo es la discriminación y defensora
+
+    5. nation in the education group of the polls are barely
+
+    '''
 
 if __name__ == '__main__':
     main()
